@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evaluación: Crítica de una Rúbrica</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Librería para generar PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" xintegrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        th, td {
+            border: 1px solid #e5e7eb;
+            padding: 0.75rem;
+            text-align: left;
+        }
+        th {
+            background-color: #f87171; /* Red-400 */
+            color: white;
+        }
+        textarea {
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        textarea:focus {
+            border-color: #0d9488; /* Teal-600 */
+            box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.2);
+            outline: none;
+        }
+        .feedback-section {
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.5s ease-in-out;
+        }
+        .feedback-section.show {
+            max-height: 1000px; /* Adjust as needed */
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid #e5e7eb;
+        }
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div id="content-to-export" class="container mx-auto p-4 md:p-8 max-w-4xl">
+        <!-- Header -->
+        <header class="text-center mb-10">
+            <h1 class="text-3xl md:text-4xl font-bold text-teal-800">Actividad de Evaluación - Módulo 4</h1>
+            <p class="text-md md:text-lg text-gray-600 mt-2">Escribe una crítica constructiva de la siguiente rúbrica "imperfecta".</p>
+        </header>
+
+        <!-- Imperfect Rubric Display -->
+        <div class="bg-white p-6 rounded-2xl shadow-lg border border-red-200 mb-8">
+            <h2 class="text-xl font-bold text-red-700 mb-4 text-center">Rúbrica Imperfecta para Estudio de Caso</h2>
+            <table class="w-full text-sm">
+                <thead>
+                    <tr>
+                        <th>Criterio</th>
+                        <th>Bueno (8-10)</th>
+                        <th>Regular (5-7)</th>
+                        <th>Malo (1-4)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td><strong>Conocimiento</strong></td><td>Demuestra un buen entendimiento del caso.</td><td>Entiende la mayoría del caso.</td><td>No entiende bien el caso.</td></tr>
+                    <tr><td><strong>Análisis</strong></td><td>El análisis es bastante bueno.</td><td>El análisis es regular.</td><td>El análisis es pobre.</td></tr>
+                    <tr><td><strong>Redacción</strong></td><td>La redacción es clara y sin errores.</td><td>Hay algunos errores de redacción.</td><td>La redacción es confusa.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- User Critique Section -->
+        <div class="bg-white p-6 rounded-2xl shadow-lg">
+            <h2 class="text-2xl font-bold text-center mb-2">Tu Crítica Constructiva</h2>
+            <p class="text-center text-gray-500 text-sm mb-6">Escribe tu análisis (aprox. 400 palabras) abordando los 4 puntos clave que se piden en la instrucción.</p>
+            <textarea id="critique-text" class="w-full h-96 p-4 border border-gray-300 rounded-md" placeholder="Comienza tu crítica aquí... Evalúa los criterios, analiza los descriptores, propón una reescritura y justifica tus sugerencias."></textarea>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="mt-8 text-center no-print flex flex-col md:flex-row gap-4 justify-center">
+            <button id="evaluate-button" class="bg-teal-600 text-white font-semibold py-3 px-8 rounded-lg hover:bg-teal-700 transition-colors shadow-md">
+                Evaluar mi Crítica
+            </button>
+            <button id="export-pdf-button" class="bg-gray-600 text-white font-semibold py-3 px-8 rounded-lg hover:bg-gray-700 transition-colors shadow-md">
+                Exportar a PDF
+            </button>
+        </div>
+        
+        <!-- Automated Feedback Section -->
+        <div id="feedback-section" class="feedback-section bg-white p-6 mt-8 rounded-2xl shadow-lg">
+            <h2 class="text-2xl font-bold text-center mb-6">Evaluación Automática de tu Crítica</h2>
+            <div id="feedback-content" class="space-y-4">
+                <!-- Feedback items will be injected here -->
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const critiqueText = document.getElementById('critique-text');
+            const evaluateButton = document.getElementById('evaluate-button');
+            const exportButton = document.getElementById('export-pdf-button');
+            const feedbackSection = document.getElementById('feedback-section');
+            const feedbackContent = document.getElementById('feedback-content');
+
+            const evaluationCriteria = [
+                {
+                    key: 'criteria_evaluation',
+                    keywords: ['criterios', 'conocimiento', 'análisis', 'redacción', 'vagos', 'subjetivos', 'pertinencia', 'claridad'],
+                    prompt: "1. ¿Evaluaste la claridad y pertinencia de los criterios?",
+                    feedback_good: "¡Bien hecho! Analizaste correctamente la debilidad de los criterios, señalando que son demasiado amplios y subjetivos.",
+                    feedback_bad: "Parece que no analizaste en profundidad los criterios ('Conocimiento', 'Análisis', 'Redacción'). Intenta reflexionar sobre si son lo suficientemente claros y distintos entre sí."
+                },
+                {
+                    key: 'descriptor_analysis',
+                    keywords: ['descriptores', 'lenguaje', 'observable', 'juicio', 'bueno', 'regular', 'pobre', 'débiles'],
+                    prompt: "2. ¿Analizaste la calidad del lenguaje en los descriptores?",
+                    feedback_good: "¡Excelente! Identificaste el problema central de los descriptores: usan un lenguaje de juicio (ej. 'bueno', 'pobre') en lugar de describir acciones observables.",
+                    feedback_bad: "No se encontró un análisis detallado de los descriptores. Recuerda que la clave es criticar el uso de un lenguaje vago y subjetivo en lugar de uno observable y específico."
+                },
+                {
+                    key: 'rewrite_proposal',
+                    keywords: ['propongo', 'reescribir', 'reescritura', 'ejemplo', 'análisis', 'sería', 'podría ser'],
+                    prompt: "3. ¿Propusiste una reescritura específica para un descriptor?",
+                    feedback_good: "¡Muy bien! Incluiste una propuesta concreta para reescribir un descriptor, que es un paso fundamental para mejorar la rúbrica.",
+                    feedback_bad: "No se detectó una propuesta de reescritura para el descriptor de 'Análisis'. Intenta proponer una versión mejorada que describa qué haría un estudiante que realiza un 'buen' análisis."
+                },
+                {
+                    key: 'justification',
+                    keywords: ['aprendizaje', 'estudiante', 'retroalimentación', 'formativa', 'claridad', 'guía', 'mejorar'],
+                    prompt: "4. ¿Justificaste por qué tus sugerencias mejoran la rúbrica para el aprendizaje?",
+                    feedback_good: "¡Perfecto! Conectaste tus sugerencias con el beneficio final para el estudiante, como proporcionar una guía más clara y una retroalimentación más efectiva.",
+                    feedback_bad: "Asegúrate de justificar tus sugerencias. Explica por qué una rúbrica con descriptores observables es una herramienta de aprendizaje más poderosa para el estudiante."
+                }
+            ];
+
+            function evaluateCritique() {
+                const text = critiqueText.value.toLowerCase();
+                let feedbackHTML = '';
+
+                if (text.length < 100) {
+                    feedbackContent.innerHTML = '<p class="text-center text-red-600 font-semibold">Tu crítica es demasiado breve para ser evaluada. Por favor, desarróllala más.</p>';
+                    feedbackSection.classList.add('show');
+                    return;
+                }
+
+                evaluationCriteria.forEach(criterion => {
+                    // Simple keyword check: count how many keywords are present.
+                    const foundKeywords = criterion.keywords.filter(kw => text.includes(kw)).length;
+                    const success = foundKeywords >= 3; // Heuristic: need at least 3 keywords to pass the check
+
+                    const icon = success ? '<span class="text-green-500">✔️</span>' : '<span class="text-red-500">❌</span>';
+                    const feedbackText = success ? criterion.feedback_good : criterion.feedback_bad;
+                    
+                    feedbackHTML += `
+                        <div class="p-4 border rounded-lg ${success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}">
+                            <p class="font-semibold">${icon} ${criterion.prompt}</p>
+                            <p class="text-sm text-gray-700 mt-2">${feedbackText}</p>
+                        </div>
+                    `;
+                });
+
+                feedbackContent.innerHTML = feedbackHTML;
+                feedbackSection.classList.add('show');
+                evaluateButton.textContent = "Evaluación Completada";
+                evaluateButton.disabled = true;
+                evaluateButton.classList.add('bg-gray-400', 'cursor-not-allowed');
+            }
+
+            function exportToPDF() {
+                const element = document.getElementById('content-to-export');
+                const filename = 'Critica_de_Rubrica_Imperfecta.pdf';
+
+                const elementToExport = element.cloneNode(true);
+                
+                // Handle textarea
+                const textarea = element.querySelector('#critique-text');
+                const clonedTextarea = elementToExport.querySelector('#critique-text');
+                const contentDiv = document.createElement('div');
+                contentDiv.innerHTML = textarea.value.replace(/\n/g, '<br>') || '<p class="text-gray-400 italic">Sin respuesta.</p>';
+                contentDiv.className = 'w-full min-h-[24rem] p-4 border border-gray-200 rounded-md bg-gray-50';
+                clonedTextarea.parentNode.replaceChild(contentDiv, clonedTextarea);
+
+                // Ensure feedback is visible in PDF if it has been generated
+                if (feedbackSection.classList.contains('show')) {
+                    elementToExport.querySelector('#feedback-section').classList.add('show');
+                }
+
+
+                const opt = {
+                  margin:       0.5,
+                  filename:     filename,
+                  image:        { type: 'jpeg', quality: 0.98 },
+                  html2canvas:  { scale: 2, useCORS: true },
+                  jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+                };
+
+                elementToExport.querySelector('.no-print').style.display = 'none';
+
+                html2pdf().from(elementToExport).set(opt).save();
+            }
+
+            evaluateButton.addEventListener('click', evaluateCritique);
+            exportButton.addEventListener('click', exportToPDF);
+        });
+    </script>
+</body>
+</html>
